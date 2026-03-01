@@ -1,20 +1,23 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { MessageSquare, X, Send, Bot, Loader2, User, Heart } from 'lucide-react';
-import { GoogleGenAI } from '@google/genai';
+import { X, Send, Bot, Loader2, User } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 
 const Chatbot = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { role: 'assistant', content: 'Namaste! I am your VolunteerHub assistant. How can I help you find the perfect NGO or volunteering opportunity in India today?' }
+    {
+      role: 'assistant',
+      content:
+        'Namaste! I am your VolunteerHub assistant. How can I help you find the perfect NGO or volunteering opportunity in India today?',
+    },
   ]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   useEffect(() => {
@@ -24,49 +27,53 @@ const Chatbot = () => {
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 
-    const userMessage = { role: 'user', content: input };
-    setMessages(prev => [...prev, userMessage]);
+    const userMessage = { role: 'user', content: input.trim() };
+    const updatedMessages = [...messages, userMessage];
+
+    setMessages(updatedMessages);
     setInput('');
     setIsLoading(true);
 
     try {
-      // ✅ FIXED: Correct Vite environment variable usage
-      const ai = new GoogleGenAI({
-        apiKey: import.meta.env.VITE_GEMINI_API_KEY
+      const response = await fetch('http://localhost:3000/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: updatedMessages.map((msg) => ({
+            role: msg.role,
+            content: msg.content,
+          })),
+        }),
       });
 
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: [
-          {
-            role: 'user',
-            parts: [{
-              text: `You are a helpful assistant for "VolunteerHub India".
-Your goal is to suggest Indian NGOs (like Goonj, CRY, Teach For India) and guide new volunteers.
-Be polite, encouraging, and use Indian cultural references where appropriate.
-Keep responses concise and formatted with markdown.
+      const data = await response.json();
 
-User says: ${input}`
-            }]
-          }
-        ],
-      });
+      if (!response.ok) {
+        throw new Error(data.reply || 'Server error');
+      }
+
+      if (!data.reply) {
+        throw new Error('Empty response from AI');
+      }
 
       const assistantMessage = {
         role: 'assistant',
-        content: response.text || "I'm sorry, I couldn't process that. Please try again."
+        content: data.reply,
       };
 
-      setMessages(prev => [...prev, assistantMessage]);
-
+      setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
       console.error('Chatbot error:', error);
-      setMessages(prev => [
+
+      setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
-          content: "Namaste! I'm having a bit of trouble connecting to my AI brain. Please try again in a moment."
-        }
+          content:
+            "Namaste! I'm having a bit of trouble connecting to my AI brain. Please try again in a moment.",
+        },
       ]);
     } finally {
       setIsLoading(false);
@@ -86,14 +93,16 @@ User says: ${input}`
             {/* Header */}
             <div className="flex items-center justify-between bg-emerald-600 p-4 text-white">
               <div className="flex items-center gap-3">
-                <div className="relative">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-md shadow-inner">
-                    <Bot size={24} className="text-white" />
-                  </div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-md shadow-inner">
+                  <Bot size={24} className="text-white" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-black tracking-tight">Impact Assistant</h3>
-                  <p className="text-[10px] font-bold opacity-80">Powered by Gemini</p>
+                  <h3 className="text-sm font-black tracking-tight">
+                    Impact Assistant
+                  </h3>
+                  <p className="text-[10px] font-bold opacity-80">
+                    Powered by Gemini
+                  </p>
                 </div>
               </div>
               <button
@@ -111,21 +120,35 @@ User says: ${input}`
                   key={i}
                   initial={{ opacity: 0, x: msg.role === 'user' ? 10 : -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${
+                    msg.role === 'user' ? 'justify-end' : 'justify-start'
+                  }`}
                 >
-                  <div className={`flex max-w-[85%] gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
-                      msg.role === 'user'
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-white text-zinc-600 shadow-sm dark:bg-zinc-800 dark:text-zinc-400'
-                    }`}>
-                      {msg.role === 'user' ? <User size={16} /> : <Bot size={16} />}
+                  <div
+                    className={`flex max-w-[85%] gap-2 ${
+                      msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'
+                    }`}
+                  >
+                    <div
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${
+                        msg.role === 'user'
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-white text-zinc-600 shadow-sm dark:bg-zinc-800 dark:text-zinc-400'
+                      }`}
+                    >
+                      {msg.role === 'user' ? (
+                        <User size={16} />
+                      ) : (
+                        <Bot size={16} />
+                      )}
                     </div>
-                    <div className={`rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
-                      msg.role === 'user'
-                        ? 'bg-emerald-600 text-white rounded-tr-none'
-                        : 'bg-white text-zinc-900 rounded-tl-none dark:bg-zinc-800 dark:text-zinc-100'
-                    }`}>
+                    <div
+                      className={`rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
+                        msg.role === 'user'
+                          ? 'bg-emerald-600 text-white rounded-tr-none'
+                          : 'bg-white text-zinc-900 rounded-tl-none dark:bg-zinc-800 dark:text-zinc-100'
+                      }`}
+                    >
                       <div className="prose prose-sm dark:prose-invert max-w-none">
                         <ReactMarkdown>{msg.content}</ReactMarkdown>
                       </div>
@@ -133,6 +156,7 @@ User says: ${input}`
                   </div>
                 </motion.div>
               ))}
+
               {isLoading && (
                 <div className="flex justify-start">
                   <div className="flex items-center gap-2 rounded-2xl bg-white px-4 py-2.5 text-zinc-500 shadow-sm dark:bg-zinc-800">
@@ -141,6 +165,7 @@ User says: ${input}`
                   </div>
                 </div>
               )}
+
               <div ref={messagesEndRef} />
             </div>
 

@@ -5,7 +5,6 @@ import { ThemeProvider } from './context/ThemeContext';
 import { NotificationProvider } from './context/NotificationContext';
 import Navbar from './components/layout/Navbar';
 import Sidebar from './components/layout/Sidebar';
-import Chatbot from './components/chatbot/Chatbot';
 import { motion, AnimatePresence } from 'motion/react';
 
 // Pages
@@ -113,7 +112,6 @@ function AppContent() {
             <AnimatedRoutes />
           </main>
         </div>
-        <Chatbot />
       </div>
     </div>
   );
